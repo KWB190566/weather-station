@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 import os
-from datetime import datetime as dt
+from datetime import datetime as dt, date, timedelta
 import pandas as pd
 from dotenv import load_dotenv
 import json
@@ -41,35 +41,29 @@ def transform_cols(df):
     df = df.set_index('Zeitpunkt')
     return df
 
-
+min_date = date( 1970, 1, 1)
 url = 'https://measurements.mobile-alerts.eu/Home/MeasurementDetails?'
-
+now = dt.today()
+end = (now.date() - min_date).days*60*60*24 + now.hour*60*60 + now.minute*60
+start = (now.date() - timedelta(days=90) - min_date).days*60*60*24
 device_info = json.loads(os.getenv('STATION_ID'))
 params = {**device_info,
     'appbundle': 'eu.mobile_alerts.mobilealerts',
-    'pagesize': 250,
-    'page': 1
+    'fromepoch':start,
+    'toepoch': end
 }
 
-
 lines = []
-for i in range(50):
-    params['page'] = i +1
-    print('Page:', params['page'])
-    page = get_page(url, params)
-    rows = get_rows(page)
-    if rows ==None:
-        print(f'Exceeded request limit after {i} requests.')
-        break
-    if i==0:
-        header = [i.text for i in rows[0].find_all('th')]
-    for row in rows[1:]:
-        row = [i.text for i in row.find_all('td')]
-        lines.append(row)
-print('Alle Seite gelesen.')
+print('Start downloading')
+page = get_page(url, params)
+rows = get_rows(page)
+header = [i.text for i in rows[0].find_all('th')]
+for row in rows[1:]:
+    row = [i.text for i in row.find_all('td')]
+    lines.append(row)
 df = pd.DataFrame(lines, columns=header)
-
 df = transform_cols(df)
-now = dt.today()
+
 filename = f'wetterstation_{now.day}-{now.month}-{now.year}.csv'    
 df.to_csv(filename)
+print('Done')
