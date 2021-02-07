@@ -66,4 +66,4 @@ df = transform_cols(df)
 
 filename = f'wetterstation_{now.day}-{now.month}-{now.year}.csv'    
 df.to_csv(filename)
-print('Done')
+print('Finally done')
